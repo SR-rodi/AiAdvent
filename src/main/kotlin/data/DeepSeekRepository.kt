@@ -9,7 +9,10 @@ import ru.sr.data.dto.ChatRequest
 import ru.sr.data.dto.ChatResponse
 import ru.sr.data.dto.Message
 
-class DeepSeekRepository(private val client: HttpClient) : AiRepository {
+class DeepSeekRepository(
+    private val client: HttpClient,
+    private val settings: ChatSettings,
+) : AiRepository {
 
     override suspend fun askAi(question: String): String {
         return try {
@@ -30,7 +33,13 @@ class DeepSeekRepository(private val client: HttpClient) : AiRepository {
 
     private fun buildRequestBody(question: String) = ChatRequest(
         model = "deepseek-chat",
-        messages = listOf(Message("user", question))
+        messages = listOf(Message("user", question)),
+        maxTokens = settings.maxTokens,
+        temperature = settings.temperature,
+        topP = settings.topP,
+        stop = settings.stop,
+        frequencyPenalty = settings.frequencyPenalty,
+        presencePenalty = settings.presencePenalty,
     )
 
     companion object {
