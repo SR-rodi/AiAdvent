@@ -6,17 +6,26 @@ import kotlinx.coroutines.launch
 import ru.sr.domain.usecase.SendMessageUseCase
 import kotlin.system.exitProcess
 
-class ConsoleChat(private val sendMessageUseCase: SendMessageUseCase) {
+class ConsoleChat(
+    private val sendMessageUseCase: SendMessageUseCase,
+    private val commandHandler: CommandHandler,
+) {
 
     suspend fun start() {
         println("Консольный чат-бот. Для выхода введите 'выход' или пустую строку")
+        println("Введите /help для списка доступных команд")
 
         while (true) {
             print("Вы: ")
-            val question = readlnOrNull()?.ifBlank { break } ?: break
-            if (question.equals("выход", ignoreCase = true)) break
+            val input = readlnOrNull()?.ifBlank { break } ?: break
+            if (input.equals("выход", ignoreCase = true)) break
 
-            val answer = askWithLoading(question)
+            if (input.startsWith("/")) {
+                println(commandHandler.handle(input))
+                continue
+            }
+
+            val answer = askWithLoading(input)
             println("Бот: $answer")
         }
 
