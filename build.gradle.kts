@@ -26,6 +26,7 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:1.4.11")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
     implementation("io.ktor:ktor-client-logging:2.3.5")
+    implementation("io.insert-koin:koin-core:3.5.3")
 }
 
 tasks.test {

@@ -1,8 +1,6 @@
-package ru.sr.day1.dto
+package ru.sr.data.dto
 
 import kotlinx.serialization.Serializable
-import ru.sr.day1.dto.Message
-import ru.sr.day1.dto.Reasoning
 
 @Serializable
 data class ChatRequest(
