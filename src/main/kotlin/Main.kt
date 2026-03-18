@@ -1,10 +1,13 @@
 package ru.sr
 
 import kotlinx.coroutines.runBlocking
-import ru.sr.day1.Day1SimpleAPIRequest
-import ru.sr.day1.Model
+import org.koin.core.context.startKoin
+import org.koin.mp.KoinPlatform
+import ru.sr.di.appModule
+import ru.sr.presentation.ConsoleChat
 
 fun main() = runBlocking {
     System.setOut(java.io.PrintStream(System.out, true, "UTF-8"))
-    Day1SimpleAPIRequest().doWork(Model.DeepSeek)
+    startKoin { modules(appModule) }
+    KoinPlatform.getKoin().get<ConsoleChat>().start()
 }
