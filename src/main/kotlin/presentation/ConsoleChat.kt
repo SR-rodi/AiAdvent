@@ -46,7 +46,7 @@ class ConsoleChat(
                         println("\nОтвет сохранён в $filename")
                     }
                 } catch (e: Exception) {
-                    fileWriter.pendingFile = null
+                    fileWriter.cancel()
                     loadingJob.cancel()
                     clearLine()
                     print("Бот: Ошибка: ${e.message}")

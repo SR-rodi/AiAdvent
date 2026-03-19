@@ -54,10 +54,10 @@ class CommandHandler(
         "write" to CommandDef("записать следующий ответ в файл", "= <filename.md>") { v ->
             if (v.isNullOrBlank()) return@CommandDef "Укажите имя файла: /write = name.md"
             if (v.trim() == "null") {
-                fileWriter.pendingFile = null
+                fileWriter.cancel()
                 return@CommandDef "Запись отменена"
             }
-            fileWriter.pendingFile = v.trim()
+            fileWriter.schedule(v.trim())
             "Следующий ответ будет записан в: ${v.trim()}"
         },
     )

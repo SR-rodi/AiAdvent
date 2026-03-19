@@ -5,6 +5,15 @@ import java.io.File
 class FileResponseWriter {
 
     var pendingFile: String? = null
+        private set
+
+    fun schedule(filename: String) {
+        pendingFile = filename
+    }
+
+    fun cancel() {
+        pendingFile = null
+    }
 
     fun writeIfPending(question: String, response: String): String? {
         val filename = pendingFile ?: return null
