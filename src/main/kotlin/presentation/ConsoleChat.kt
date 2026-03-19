@@ -25,19 +25,30 @@ class ConsoleChat(
                 continue
             }
 
-            val answer = askWithLoading(input)
-            println("Бот: $answer")
+            coroutineScope {
+                val loadingJob = launch { showLoadingIndicator() }
+                var firstChunk = true
+                try {
+                    sendMessageUseCase.executeStream(input).collect { chunk ->
+                        if (firstChunk) {
+                            loadingJob.cancel()
+                            clearLine()
+                            print("Бот: ")
+                            firstChunk = false
+                        }
+                        print(chunk)
+                    }
+                } catch (e: Exception) {
+                    loadingJob.cancel()
+                    clearLine()
+                    print("Бот: Ошибка: ${e.message}")
+                }
+                loadingJob.cancel()
+            }
+            println()
         }
 
         exitProcess(0)
-    }
-
-    private suspend fun askWithLoading(question: String): String = coroutineScope {
-        val loadingJob = launch { showLoadingIndicator() }
-        val answer = sendMessageUseCase.execute(question)
-        loadingJob.cancel()
-        clearLine()
-        answer
     }
 
     private suspend fun showLoadingIndicator() {

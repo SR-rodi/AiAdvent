@@ -14,4 +14,5 @@ data class ChatRequest(
     val stop: List<String>? = null,
     @SerialName("frequency_penalty") val frequencyPenalty: Double? = null,
     @SerialName("presence_penalty") val presencePenalty: Double? = null,
+    val stream: Boolean? = null,
 )
