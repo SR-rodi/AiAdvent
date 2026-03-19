@@ -1,8 +1,12 @@
 package ru.sr.presentation
 
 import ru.sr.data.ChatSettings
+import ru.sr.data.FileResponseWriter
 
-class CommandHandler(private val settings: ChatSettings) {
+class CommandHandler(
+    private val settings: ChatSettings,
+    private val fileWriter: FileResponseWriter,
+) {
 
     private data class CommandDef(
         val description: String,
@@ -46,6 +50,15 @@ class CommandHandler(private val settings: ChatSettings) {
         },
         "presencePenalty" to CommandDef("штраф за уже упомянутые токены", "= <-2.0..2.0>") { v ->
             setNullableDouble("presencePenalty", v, -2.0, 2.0) { settings.presencePenalty = it }
+        },
+        "write" to CommandDef("записать следующий ответ в файл", "= <filename.md>") { v ->
+            if (v.isNullOrBlank()) return@CommandDef "Укажите имя файла: /write = name.md"
+            if (v.trim() == "null") {
+                fileWriter.pendingFile = null
+                return@CommandDef "Запись отменена"
+            }
+            fileWriter.pendingFile = v.trim()
+            "Следующий ответ будет записан в: ${v.trim()}"
         },
     )
 
