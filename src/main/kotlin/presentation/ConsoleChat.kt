@@ -3,12 +3,14 @@ package ru.sr.presentation
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import ru.sr.data.FileResponseWriter
 import ru.sr.domain.usecase.SendMessageUseCase
 import kotlin.system.exitProcess
 
 class ConsoleChat(
     private val sendMessageUseCase: SendMessageUseCase,
     private val commandHandler: CommandHandler,
+    private val fileWriter: FileResponseWriter,
 ) {
 
     suspend fun start() {
@@ -28,6 +30,7 @@ class ConsoleChat(
             coroutineScope {
                 val loadingJob = launch { showLoadingIndicator() }
                 var firstChunk = true
+                val responseBuffer = StringBuilder()
                 try {
                     sendMessageUseCase.executeStream(input).collect { chunk ->
                         if (firstChunk) {
@@ -37,8 +40,13 @@ class ConsoleChat(
                             firstChunk = false
                         }
                         print(chunk)
+                        responseBuffer.append(chunk)
+                    }
+                    fileWriter.writeIfPending(input, responseBuffer.toString())?.let { filename ->
+                        println("\nОтвет сохранён в $filename")
                     }
                 } catch (e: Exception) {
+                    fileWriter.cancel()
                     loadingJob.cancel()
                     clearLine()
                     print("Бот: Ошибка: ${e.message}")

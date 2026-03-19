@@ -10,6 +10,7 @@ import org.koin.dsl.module
 import ru.sr.data.AiRepository
 import ru.sr.data.ChatSettings
 import ru.sr.data.DeepSeekRepository
+import ru.sr.data.FileResponseWriter
 import ru.sr.domain.usecase.SendMessageUseCase
 import ru.sr.presentation.CommandHandler
 import ru.sr.presentation.ConsoleChat
@@ -29,8 +30,9 @@ val appModule = module {
         }
     }
     single { ChatSettings() }
+    single { FileResponseWriter() }
     single<AiRepository> { DeepSeekRepository(get(), get()) }
     single { SendMessageUseCase(get()) }
-    single { CommandHandler(get()) }
-    single { ConsoleChat(get(), get()) }
+    single { CommandHandler(get(), get()) }
+    single { ConsoleChat(get(), get(), get()) }
 }
