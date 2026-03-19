@@ -1,8 +1,6 @@
 package ru.sr.presentation
 
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collect
 import ru.sr.domain.usecase.SendMessageUseCase
 import kotlin.system.exitProcess
 
@@ -25,37 +23,15 @@ class ConsoleChat(
                 continue
             }
 
-            val answer = askWithLoading(input)
-            println("Бот: $answer")
+            print("Бот: ")
+            try {
+                sendMessageUseCase.executeStream(input).collect { chunk -> print(chunk) }
+            } catch (e: Exception) {
+                print("Ошибка: ${e.message}")
+            }
+            println()
         }
 
         exitProcess(0)
-    }
-
-    private suspend fun askWithLoading(question: String): String = coroutineScope {
-        val loadingJob = launch { showLoadingIndicator() }
-        val answer = sendMessageUseCase.execute(question)
-        loadingJob.cancel()
-        clearLine()
-        answer
-    }
-
-    private suspend fun showLoadingIndicator() {
-        print(LOADING)
-        repeat(DOT_AMOUNT) {
-            delay(500)
-            print(".")
-        }
-        clearLine()
-        showLoadingIndicator()
-    }
-
-    private fun clearLine() {
-        print("\r" + " ".repeat(LOADING.length + DOT_AMOUNT) + "\r")
-    }
-
-    private companion object {
-        const val LOADING = "Loading"
-        const val DOT_AMOUNT = 8
     }
 }

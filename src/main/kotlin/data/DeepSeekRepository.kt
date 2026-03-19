@@ -5,14 +5,21 @@ import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.utils.io.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.serialization.json.Json
 import ru.sr.data.dto.ChatRequest
 import ru.sr.data.dto.ChatResponse
 import ru.sr.data.dto.Message
+import ru.sr.data.dto.StreamChunk
 
 class DeepSeekRepository(
     private val client: HttpClient,
     private val settings: ChatSettings,
 ) : AiRepository {
+
+    private val json = Json { ignoreUnknownKeys = true }
 
     override suspend fun askAi(question: String): String {
         return try {
@@ -31,7 +38,29 @@ class DeepSeekRepository(
         }
     }
 
-    private fun buildRequestBody(question: String) = ChatRequest(
+    override fun askAiStream(question: String): Flow<String> = flow {
+        client.preparePost(URL) {
+            contentType(ContentType.Application.Json)
+            header(HttpHeaders.Authorization, "Bearer $API_KEY")
+            setBody(buildRequestBody(question, stream = true))
+        }.execute { response ->
+            if (!response.status.isSuccess()) {
+                throw Exception(response.bodyAsText())
+            }
+            val channel = response.bodyAsChannel()
+            while (!channel.isClosedForRead) {
+                val line = channel.readUTF8Line() ?: break
+                if (!line.startsWith("data: ")) continue
+                val data = line.removePrefix("data: ").trim()
+                if (data == "[DONE]") break
+                val content = json.decodeFromString<StreamChunk>(data)
+                    .choices.firstOrNull()?.delta?.content
+                if (content != null) emit(content)
+            }
+        }
+    }
+
+    private fun buildRequestBody(question: String, stream: Boolean? = null) = ChatRequest(
         model = "deepseek-chat",
         messages = listOf(Message("user", question)),
         maxTokens = settings.maxTokens,
@@ -40,6 +69,7 @@ class DeepSeekRepository(
         stop = settings.stop,
         frequencyPenalty = settings.frequencyPenalty,
         presencePenalty = settings.presencePenalty,
+        stream = stream,
     )
 
     companion object {
