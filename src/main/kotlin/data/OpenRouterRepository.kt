@@ -12,12 +12,12 @@ import ru.sr.data.dto.Reasoning
 
 class OpenRouterRepository(private val client: HttpClient) : AiRepository {
 
-    override suspend fun askAi(question: String): String {
+    override suspend fun askAi(messages: List<Message>, settings: ChatSettings): String {
         return try {
             val response: HttpResponse = client.post(URL) {
                 contentType(ContentType.Application.Json)
                 header(HttpHeaders.Authorization, "Bearer $API_KEY")
-                setBody(buildRequestBody(question))
+                setBody(buildRequestBody(messages))
             }
             if (response.status.isSuccess()) {
                 response.body<ChatResponse>().choices.firstOrNull()?.message?.content ?: "Пустой ответ"
@@ -29,9 +29,9 @@ class OpenRouterRepository(private val client: HttpClient) : AiRepository {
         }
     }
 
-    private fun buildRequestBody(question: String) = ChatRequest(
+    private fun buildRequestBody(messages: List<Message>) = ChatRequest(
         model = "z-ai/glm-5-turbo",
-        messages = listOf(Message("user", question)),
+        messages = messages,
         reasoning = Reasoning(enabled = true)
     )
 

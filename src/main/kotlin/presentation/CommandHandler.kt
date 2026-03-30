@@ -1,10 +1,10 @@
 package ru.sr.presentation
 
-import ru.sr.data.ChatSettings
 import ru.sr.data.FileResponseWriter
+import ru.sr.domain.agent.AgentManager
 
 class CommandHandler(
-    private val settings: ChatSettings,
+    private val agentManager: AgentManager,
     private val fileWriter: FileResponseWriter,
 ) {
 
@@ -22,34 +22,51 @@ class CommandHandler(
             ?: "Неизвестная команда: /$name. Введите /help для справки"
     }
 
+    private fun settings() = agentManager.currentAgent.settings
+
     private fun buildCommands(): Map<String, CommandDef> = linkedMapOf(
         "help" to CommandDef("эта справка") { _ ->
             generateHelp()
         },
-        "settings" to CommandDef("показать текущие значения параметров") { _ ->
-            settings.format()
+        "agent" to CommandDef("показать имя текущего агента") { _ ->
+            "Текущий агент: ${agentManager.currentName()}"
         },
-        "reset" to CommandDef("сбросить все параметры к null") { _ ->
-            settings.reset()
-            "Параметры сброшены"
+        "agents" to CommandDef("показать список всех агентов") { _ ->
+            "Агенты: " + agentManager.listNames().joinToString(", ")
+        },
+        "new-agent" to CommandDef("создать нового агента", "= <name>") { v ->
+            if (v.isNullOrBlank()) return@CommandDef "Укажите имя: /new-agent = MyAgent"
+            agentManager.createAgent(v.trim())
+        },
+        "switch" to CommandDef("переключиться на другого агента", "= <name>") { v ->
+            if (v.isNullOrBlank()) return@CommandDef "Укажите имя: /switch = MyAgent"
+            agentManager.switchTo(v.trim())
+        },
+        "settings" to CommandDef("показать текущие значения параметров") { _ ->
+            settings().format()
+        },
+        "reset" to CommandDef("сбросить все параметры к null и историю текущего агента") { _ ->
+            agentManager.currentAgent.clearHistory()
+            settings().reset()
+            "Параметры и история сброшены"
         },
         "maxTokens" to CommandDef("лимит токенов в ответе (> 0)", "= <int>") { v ->
-            setNullableInt("maxTokens", v, min = 1) { settings.maxTokens = it }
+            setNullableInt("maxTokens", v, min = 1) { settings().maxTokens = it }
         },
         "temperature" to CommandDef("случайность ответа", "= <0.0..2.0>") { v ->
-            setNullableDouble("temperature", v, 0.0, 2.0) { settings.temperature = it }
+            setNullableDouble("temperature", v, 0.0, 2.0) { settings().temperature = it }
         },
         "topP" to CommandDef("nucleus sampling", "= <0.0..1.0>") { v ->
-            setNullableDouble("topP", v, 0.0, 1.0) { settings.topP = it }
+            setNullableDouble("topP", v, 0.0, 1.0) { settings().topP = it }
         },
         "stop" to CommandDef("стоп-последовательности через запятую (до 16)", "= <s1, s2, ...>") { v ->
             setStop(v)
         },
         "frequencyPenalty" to CommandDef("штраф за повтор токенов", "= <-2.0..2.0>") { v ->
-            setNullableDouble("frequencyPenalty", v, -2.0, 2.0) { settings.frequencyPenalty = it }
+            setNullableDouble("frequencyPenalty", v, -2.0, 2.0) { settings().frequencyPenalty = it }
         },
         "presencePenalty" to CommandDef("штраф за уже упомянутые токены", "= <-2.0..2.0>") { v ->
-            setNullableDouble("presencePenalty", v, -2.0, 2.0) { settings.presencePenalty = it }
+            setNullableDouble("presencePenalty", v, -2.0, 2.0) { settings().presencePenalty = it }
         },
         "write" to CommandDef("записать следующий ответ в файл", "= <filename.md>") { v ->
             if (v.isNullOrBlank()) return@CommandDef "Укажите имя файла: /write = name.md"
@@ -113,12 +130,12 @@ class CommandHandler(
     private fun setStop(raw: String?): String {
         if (raw == null) return "Укажите значение: /stop = <s1, s2, ...>"
         if (raw == "null") {
-            settings.stop = null
+            settings().stop = null
             return "stop сброшен"
         }
         val list = raw.split(",").map { it.trim() }.filter { it.isNotEmpty() }
         if (list.size > 16) return "Ошибка: stop принимает до 16 последовательностей, получено ${list.size}"
-        settings.stop = list
+        settings().stop = list
         return "stop = $list"
     }
 }

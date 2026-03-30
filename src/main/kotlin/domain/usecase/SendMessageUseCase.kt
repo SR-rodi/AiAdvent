@@ -1,9 +1,9 @@
 package ru.sr.domain.usecase
 
 import kotlinx.coroutines.flow.Flow
-import ru.sr.data.AiRepository
+import ru.sr.domain.agent.AgentManager
 
-class SendMessageUseCase(private val repository: AiRepository) {
-    suspend fun execute(question: String): String = repository.askAi(question)
-    fun executeStream(question: String): Flow<String> = repository.askAiStream(question)
+class SendMessageUseCase(private val agentManager: AgentManager) {
+    suspend fun execute(question: String): String = agentManager.currentAgent.ask(question)
+    fun executeStream(question: String): Flow<String> = agentManager.currentAgent.askStream(question)
 }
