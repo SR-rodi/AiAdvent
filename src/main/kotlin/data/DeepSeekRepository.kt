@@ -14,19 +14,16 @@ import ru.sr.data.dto.ChatResponse
 import ru.sr.data.dto.Message
 import ru.sr.data.dto.StreamChunk
 
-class DeepSeekRepository(
-    private val client: HttpClient,
-    private val settings: ChatSettings,
-) : AiRepository {
+class DeepSeekRepository(private val client: HttpClient) : AiRepository {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    override suspend fun askAi(question: String): String {
+    override suspend fun askAi(messages: List<Message>, settings: ChatSettings): String {
         return try {
             val response: HttpResponse = client.post(URL) {
                 contentType(ContentType.Application.Json)
                 header(HttpHeaders.Authorization, "Bearer $API_KEY")
-                setBody(buildRequestBody(question))
+                setBody(buildRequestBody(messages, settings))
             }
             if (response.status.isSuccess()) {
                 response.body<ChatResponse>().choices.firstOrNull()?.message?.content ?: "Пустой ответ"
@@ -38,11 +35,11 @@ class DeepSeekRepository(
         }
     }
 
-    override fun askAiStream(question: String): Flow<String> = flow {
+    override fun askAiStream(messages: List<Message>, settings: ChatSettings): Flow<String> = flow {
         client.preparePost(URL) {
             contentType(ContentType.Application.Json)
             header(HttpHeaders.Authorization, "Bearer $API_KEY")
-            setBody(buildRequestBody(question, stream = true))
+            setBody(buildRequestBody(messages, settings, stream = true))
         }.execute { response ->
             if (!response.status.isSuccess()) {
                 throw Exception(response.bodyAsText())
@@ -60,9 +57,13 @@ class DeepSeekRepository(
         }
     }
 
-    private fun buildRequestBody(question: String, stream: Boolean? = null) = ChatRequest(
+    private fun buildRequestBody(
+        messages: List<Message>,
+        settings: ChatSettings,
+        stream: Boolean? = null,
+    ) = ChatRequest(
         model = "deepseek-chat",
-        messages = listOf(Message("user", question)),
+        messages = messages,
         maxTokens = settings.maxTokens,
         temperature = settings.temperature,
         topP = settings.topP,
