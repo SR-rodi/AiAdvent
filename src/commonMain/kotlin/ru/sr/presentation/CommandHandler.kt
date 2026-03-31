@@ -1,11 +1,11 @@
 package ru.sr.presentation
 
-import ru.sr.data.FileResponseWriter
+import ru.sr.data.FileResponseWriterPort
 import ru.sr.domain.agent.AgentManager
 
 class CommandHandler(
     private val agentManager: AgentManager,
-    private val fileWriter: FileResponseWriter,
+    private val fileWriter: FileResponseWriterPort,
 ) {
 
     private data class CommandDef(

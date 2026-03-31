@@ -3,14 +3,15 @@ package ru.sr.presentation
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import ru.sr.data.FileResponseWriter
+import ru.sr.data.FileResponseWriterPort
 import ru.sr.domain.usecase.SendMessageUseCase
 import kotlin.system.exitProcess
 
+@Deprecated("Console UI; replaced by Compose Desktop UI. See MainDesktop.kt")
 class ConsoleChat(
     private val sendMessageUseCase: SendMessageUseCase,
     private val commandHandler: CommandHandler,
-    private val fileWriter: FileResponseWriter,
+    private val fileWriter: FileResponseWriterPort,
 ) {
 
     suspend fun start() {

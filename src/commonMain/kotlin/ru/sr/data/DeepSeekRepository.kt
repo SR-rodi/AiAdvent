@@ -74,7 +74,7 @@ class DeepSeekRepository(private val client: HttpClient) : AiRepository {
     )
 
     companion object {
-        private val API_KEY: String = System.getenv("DEEP_SEEK_API_KEY")
+        private val API_KEY: String = getEnv("DEEP_SEEK_API_KEY")
         private const val URL = "https://api.deepseek.com/v1/chat/completions"
     }
 }

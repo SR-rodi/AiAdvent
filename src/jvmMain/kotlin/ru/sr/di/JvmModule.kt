@@ -7,15 +7,11 @@ import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
 import org.koin.dsl.module
-import ru.sr.data.AiRepository
-import ru.sr.data.DeepSeekRepository
 import ru.sr.data.FileResponseWriter
-import ru.sr.domain.agent.AgentManager
-import ru.sr.domain.usecase.SendMessageUseCase
-import ru.sr.presentation.CommandHandler
+import ru.sr.data.FileResponseWriterPort
 import ru.sr.presentation.ConsoleChat
 
-val appModule = module {
+val jvmModule = module {
     single {
         HttpClient(CIO) {
             install(HttpTimeout) {
@@ -29,10 +25,6 @@ val appModule = module {
             }
         }
     }
-    single { FileResponseWriter() }
-    single<AiRepository> { DeepSeekRepository(get()) }
-    single { AgentManager(get()) }
-    single { SendMessageUseCase(get()) }
-    single { CommandHandler(get(), get()) }
+    single<FileResponseWriterPort> { FileResponseWriter() }
     single { ConsoleChat(get(), get(), get()) }
 }

@@ -36,7 +36,7 @@ class OpenRouterRepository(private val client: HttpClient) : AiRepository {
     )
 
     companion object {
-        private val API_KEY: String = System.getenv("OPEN_ROUTER_API_KEY")
+        private val API_KEY: String = getEnv("OPEN_ROUTER_API_KEY")
         private const val URL = "https://openrouter.ai/api/v1/chat/completions"
     }
 }

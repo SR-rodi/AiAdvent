@@ -2,20 +2,20 @@ package ru.sr.data
 
 import java.io.File
 
-class FileResponseWriter {
+class FileResponseWriter : FileResponseWriterPort {
 
-    var pendingFile: String? = null
+    override var pendingFile: String? = null
         private set
 
-    fun schedule(filename: String) {
+    override fun schedule(filename: String) {
         pendingFile = filename
     }
 
-    fun cancel() {
+    override fun cancel() {
         pendingFile = null
     }
 
-    fun writeIfPending(question: String, response: String): String? {
+    override fun writeIfPending(question: String, response: String): String? {
         val filename = pendingFile ?: return null
         File(filename).writeText("# $question\n\n$response")
         pendingFile = null
