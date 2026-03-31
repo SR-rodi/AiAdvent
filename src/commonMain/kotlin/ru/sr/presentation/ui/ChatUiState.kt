@@ -1,5 +1,7 @@
 package ru.sr.presentation.ui
 
+import ru.sr.domain.agent.TokenStats
+
 data class AgentSettingsUiState(
     val temperature: String = "1.0",
     val maxTokens: String = "",
@@ -18,6 +20,7 @@ data class ChatUiState(
     val showNewAgentDialog: Boolean = false,
     val settings: AgentSettingsUiState = AgentSettingsUiState(),
     val isSettingsPanelVisible: Boolean = true,
+    val tokenStats: TokenStats = TokenStats(),
 )
 
 sealed class ChatMessage {

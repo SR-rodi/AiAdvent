@@ -85,6 +85,7 @@ class ChatViewModel(
                 agentNames = agentManager.listNames(),
                 messages = getMessages(newName),
                 settings = snapshotSettings(),
+                tokenStats = agentManager.tokenStatsOf(newName),
             )
         }
     }
@@ -175,6 +176,7 @@ class ChatViewModel(
                 messages = getMessages(currentName),
                 currentAgentName = currentName,
                 agentNames = agentManager.listNames(),
+                tokenStats = agentManager.currentTokenStats(),
             )
         }
     }
@@ -209,6 +211,7 @@ class ChatViewModel(
                     state.copy(
                         isStreaming = false,
                         messages = getMessages(currentName),
+                        tokenStats = agentManager.currentTokenStats(),
                     )
                 }
                 fileWriter.writeIfPending(text, buffer.toString())?.let { filename ->

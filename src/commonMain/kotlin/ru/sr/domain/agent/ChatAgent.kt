@@ -7,6 +7,7 @@ import ru.sr.data.AiRepository
 import ru.sr.data.ChatHistoryPort
 import ru.sr.data.ChatSettings
 import ru.sr.data.dto.Message
+import ru.sr.data.dto.TokenUsage
 
 class ChatAgent(
     override val name: String,
@@ -17,17 +18,21 @@ class ChatAgent(
 
     private val history = chatHistory.loadHistory(name).toMutableList()
 
+    var tokenStats: TokenStats = TokenStats()
+        private set
+
     fun historySnapshot(): List<Message> = history.toList()
 
     override suspend fun ask(question: String): String {
         val userMsg = Message("user", question)
         history.add(userMsg)
         chatHistory.appendMessage(name, userMsg)
-        val response = repository.askAi(history.toList(), settings)
-        val assistantMsg = Message("assistant", response)
+        val result = repository.askAi(history.toList(), settings)
+        val assistantMsg = Message("assistant", result.content)
         history.add(assistantMsg)
         chatHistory.appendMessage(name, assistantMsg)
-        return response
+        result.usage?.let { updateTokenStats(it) }
+        return result.content
     }
 
     override fun askStream(question: String): Flow<String> {
@@ -35,7 +40,9 @@ class ChatAgent(
         history.add(userMsg)
         chatHistory.appendMessage(name, userMsg)
         val buffer = StringBuilder()
-        return repository.askAiStream(history.toList(), settings)
+        return repository.askAiStream(history.toList(), settings) { usage ->
+            updateTokenStats(usage)
+        }
             .onEach { chunk -> buffer.append(chunk) }
             .onCompletion { error ->
                 if (error == null && buffer.isNotEmpty()) {
@@ -51,5 +58,14 @@ class ChatAgent(
     fun clearHistory() {
         history.clear()
         chatHistory.clearHistory(name)
+        tokenStats = TokenStats()
+    }
+
+    private fun updateTokenStats(usage: TokenUsage) {
+        tokenStats = TokenStats(
+            lastPromptTokens     = usage.promptTokens,
+            lastCompletionTokens = usage.completionTokens,
+            sessionTotalTokens   = tokenStats.sessionTotalTokens + usage.totalTokens,
+        )
     }
 }

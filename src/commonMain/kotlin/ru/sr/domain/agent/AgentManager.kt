@@ -43,6 +43,9 @@ class AgentManager(
 
     fun historyOf(name: String): List<Message> = agents[name]?.historySnapshot() ?: emptyList()
 
+    fun tokenStatsOf(name: String): TokenStats = agents[name]?.tokenStats ?: TokenStats()
+    fun currentTokenStats(): TokenStats = current.tokenStats
+
     private fun createAndStore(name: String, settings: ChatSettings = ChatSettings()): ChatAgent {
         val agent = ChatAgent(name = name, repository = repository, settings = settings, chatHistory = chatHistory)
         agents[name] = agent
