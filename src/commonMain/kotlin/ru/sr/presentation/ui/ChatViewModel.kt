@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import ru.sr.data.ChatSettings
 import ru.sr.data.FileResponseWriterPort
 import ru.sr.domain.agent.AgentManager
 import ru.sr.domain.usecase.SendMessageUseCase
@@ -23,10 +24,37 @@ class ChatViewModel(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var nextId = 0L
 
+    // Отдельная история сообщений для каждого агента
+    private val agentMessages = LinkedHashMap<String, List<ChatMessage>>().apply {
+        put(agentManager.currentName(), emptyList())
+    }
+
     private val _state = MutableStateFlow(
-        ChatUiState(currentAgentName = agentManager.currentName())
+        ChatUiState(
+            currentAgentName = agentManager.currentName(),
+            agentNames = agentManager.listNames(),
+            settings = snapshotSettings(),
+        )
     )
     val state: StateFlow<ChatUiState> = _state.asStateFlow()
+
+    // --- Вспомогательные функции для работы с per-agent историей ---
+
+    private fun getMessages(agentName: String): List<ChatMessage> =
+        synchronized(agentMessages) { agentMessages[agentName] ?: emptyList() }
+
+    private fun setMessages(agentName: String, msgs: List<ChatMessage>) =
+        synchronized(agentMessages) { agentMessages[agentName] = msgs }
+
+    private fun appendMessage(agentName: String, msg: ChatMessage) =
+        setMessages(agentName, getMessages(agentName) + msg)
+
+    private fun updateAiMessage(agentName: String, id: Long, transform: (ChatMessage.Ai) -> ChatMessage.Ai) =
+        setMessages(agentName, getMessages(agentName).map { msg ->
+            if (msg is ChatMessage.Ai && msg.id == id) transform(msg) else msg
+        })
+
+    // --- Публичный API ---
 
     fun onInputChanged(text: String) {
         _state.update { it.copy(inputText = text) }
@@ -44,24 +72,119 @@ class ChatViewModel(
         }
     }
 
+    fun switchAgent(name: String) {
+        agentManager.switchTo(name)
+        val newName = agentManager.currentName()
+        _state.update {
+            it.copy(
+                currentAgentName = newName,
+                agentNames = agentManager.listNames(),
+                messages = getMessages(newName),
+                settings = snapshotSettings(),
+            )
+        }
+    }
+
+    fun createAgent(name: String, settings: ChatSettings = ChatSettings()) {
+        val result = agentManager.createAgent(name, settings)
+        val newName = agentManager.currentName()
+        synchronized(agentMessages) { agentMessages.putIfAbsent(newName, emptyList()) }
+        val systemMsg = ChatMessage.System(id = nextId++, text = result)
+        appendMessage(newName, systemMsg)
+        _state.update {
+            it.copy(
+                currentAgentName = newName,
+                agentNames = agentManager.listNames(),
+                messages = getMessages(newName),
+                showNewAgentDialog = false,
+                settings = snapshotSettings(),
+            )
+        }
+    }
+
+    fun showNewAgentDialog() = _state.update { it.copy(showNewAgentDialog = true) }
+    fun dismissNewAgentDialog() = _state.update { it.copy(showNewAgentDialog = false) }
+    fun toggleSettingsPanel() = _state.update { it.copy(isSettingsPanelVisible = !it.isSettingsPanelVisible) }
+
+    private fun snapshotSettings(): AgentSettingsUiState {
+        val s = agentManager.currentAgent.settings
+        return AgentSettingsUiState(
+            temperature = s.temperature?.toString() ?: "",
+            maxTokens = s.maxTokens?.toString() ?: "",
+            topP = s.topP?.toString() ?: "",
+            frequencyPenalty = s.frequencyPenalty?.toString() ?: "",
+            presencePenalty = s.presencePenalty?.toString() ?: "",
+            stop = s.stop?.joinToString(", ") ?: "",
+        )
+    }
+
+    fun onTemperatureChanged(v: String) {
+        agentManager.currentAgent.settings.temperature = v.toDoubleOrNull()
+        _state.update { it.copy(settings = it.settings.copy(temperature = v)) }
+    }
+
+    fun onMaxTokensChanged(v: String) {
+        agentManager.currentAgent.settings.maxTokens = v.trim().toIntOrNull()
+        _state.update { it.copy(settings = it.settings.copy(maxTokens = v)) }
+    }
+
+    fun onTopPChanged(v: String) {
+        agentManager.currentAgent.settings.topP = v.toDoubleOrNull()
+        _state.update { it.copy(settings = it.settings.copy(topP = v)) }
+    }
+
+    fun onFrequencyPenaltyChanged(v: String) {
+        agentManager.currentAgent.settings.frequencyPenalty = v.toDoubleOrNull()
+        _state.update { it.copy(settings = it.settings.copy(frequencyPenalty = v)) }
+    }
+
+    fun onPresencePenaltyChanged(v: String) {
+        agentManager.currentAgent.settings.presencePenalty = v.toDoubleOrNull()
+        _state.update { it.copy(settings = it.settings.copy(presencePenalty = v)) }
+    }
+
+    fun onStopChanged(v: String) {
+        agentManager.currentAgent.settings.stop = v.trim()
+            .takeIf { it.isNotEmpty() }
+            ?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }
+        _state.update { it.copy(settings = it.settings.copy(stop = v)) }
+    }
+
+    fun onSettingsReset() {
+        agentManager.currentAgent.settings.reset()
+        _state.update { it.copy(settings = snapshotSettings()) }
+    }
+
     private fun handleCommand(input: String) {
         val result = commandHandler.handle(input)
+        val currentName = agentManager.currentName()
         val systemMsg = ChatMessage.System(id = nextId++, text = result)
+        appendMessage(currentName, systemMsg)
+
+        // Если команда /new-agent создала нового агента, зарегистрировать его историю
+        agentManager.listNames().forEach { name ->
+            synchronized(agentMessages) { agentMessages.putIfAbsent(name, emptyList()) }
+        }
+
         _state.update { state ->
             state.copy(
-                messages = state.messages + systemMsg,
-                currentAgentName = agentManager.currentName(),
+                messages = getMessages(currentName),
+                currentAgentName = currentName,
+                agentNames = agentManager.listNames(),
             )
         }
     }
 
     private fun sendMessage(text: String) {
+        val currentName = agentManager.currentName()
         val userMsg = ChatMessage.User(id = nextId++, text = text)
         val aiPlaceholder = ChatMessage.Ai(id = nextId++, text = "", isStreaming = true)
 
+        appendMessage(currentName, userMsg)
+        appendMessage(currentName, aiPlaceholder)
         _state.update {
             it.copy(
-                messages = it.messages + userMsg + aiPlaceholder,
+                messages = getMessages(currentName),
                 isStreaming = true,
             )
         }
@@ -72,39 +195,30 @@ class ChatViewModel(
                 val buffer = StringBuilder()
                 sendMessageUseCase.executeStream(text).collect { chunk ->
                     buffer.append(chunk)
-                    val snapshot = buffer.toString()
+                    updateAiMessage(currentName, aiId) { it.copy(text = buffer.toString(), isStreaming = true) }
                     _state.update { state ->
-                        state.copy(messages = state.messages.map { msg ->
-                            if (msg is ChatMessage.Ai && msg.id == aiId)
-                                msg.copy(text = snapshot, isStreaming = true)
-                            else msg
-                        })
+                        state.copy(messages = getMessages(currentName))
                     }
                 }
+                updateAiMessage(currentName, aiId) { it.copy(isStreaming = false) }
                 _state.update { state ->
                     state.copy(
                         isStreaming = false,
-                        messages = state.messages.map { msg ->
-                            if (msg is ChatMessage.Ai && msg.id == aiId)
-                                msg.copy(isStreaming = false)
-                            else msg
-                        }
+                        messages = getMessages(currentName),
                     )
                 }
                 fileWriter.writeIfPending(text, buffer.toString())?.let { filename ->
                     val notice = ChatMessage.System(id = nextId++, text = "Ответ сохранён в $filename")
-                    _state.update { it.copy(messages = it.messages + notice) }
+                    appendMessage(currentName, notice)
+                    _state.update { it.copy(messages = getMessages(currentName)) }
                 }
             } catch (e: Exception) {
                 fileWriter.cancel()
+                updateAiMessage(currentName, aiId) { it.copy(text = "Ошибка: ${e.message}", isStreaming = false) }
                 _state.update { state ->
                     state.copy(
                         isStreaming = false,
-                        messages = state.messages.map { msg ->
-                            if (msg is ChatMessage.Ai && msg.id == aiId)
-                                msg.copy(text = "Ошибка: ${e.message}", isStreaming = false)
-                            else msg
-                        }
+                        messages = getMessages(currentName),
                     )
                 }
             }

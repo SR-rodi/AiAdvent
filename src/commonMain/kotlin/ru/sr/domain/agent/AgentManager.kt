@@ -14,9 +14,9 @@ class AgentManager(private val repository: AiRepository) {
 
     val currentAgent: ChatAgent get() = current
 
-    fun createAgent(name: String): String {
+    fun createAgent(name: String, settings: ChatSettings = ChatSettings()): String {
         if (agents.containsKey(name)) return "Агент с именем \"$name\" уже существует"
-        current = createAndStore(name)
+        current = createAndStore(name, settings)
         return "Создан агент \"$name\", переключились на него"
     }
 
@@ -30,8 +30,8 @@ class AgentManager(private val repository: AiRepository) {
 
     fun listNames(): List<String> = agents.keys.toList()
 
-    private fun createAndStore(name: String): ChatAgent {
-        val agent = ChatAgent(name = name, repository = repository, settings = ChatSettings())
+    private fun createAndStore(name: String, settings: ChatSettings = ChatSettings()): ChatAgent {
+        val agent = ChatAgent(name = name, repository = repository, settings = settings)
         agents[name] = agent
         return agent
     }
