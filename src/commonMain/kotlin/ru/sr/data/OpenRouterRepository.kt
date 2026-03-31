@@ -12,7 +12,7 @@ import ru.sr.data.dto.Reasoning
 
 class OpenRouterRepository(private val client: HttpClient) : AiRepository {
 
-    override suspend fun askAi(messages: List<Message>, settings: ChatSettings): String {
+    override suspend fun askAi(messages: List<Message>, settings: ChatSettings): AiResult {
         return try {
             val response: HttpResponse = client.post(URL) {
                 contentType(ContentType.Application.Json)
@@ -20,12 +20,14 @@ class OpenRouterRepository(private val client: HttpClient) : AiRepository {
                 setBody(buildRequestBody(messages))
             }
             if (response.status.isSuccess()) {
-                response.body<ChatResponse>().choices.firstOrNull()?.message?.content ?: "Пустой ответ"
+                val body = response.body<ChatResponse>()
+                val content = body.choices.firstOrNull()?.message?.content ?: "Пустой ответ"
+                AiResult(content, body.usage)
             } else {
                 throw Exception(response.bodyAsText())
             }
         } catch (e: Exception) {
-            "Ошибка при запросе: ${e.message}"
+            AiResult("Ошибка при запросе: ${e.message}", null)
         }
     }
 

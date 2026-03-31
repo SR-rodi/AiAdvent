@@ -13,12 +13,14 @@ import ru.sr.data.dto.ChatRequest
 import ru.sr.data.dto.ChatResponse
 import ru.sr.data.dto.Message
 import ru.sr.data.dto.StreamChunk
+import ru.sr.data.dto.StreamOptions
+import ru.sr.data.dto.TokenUsage
 
 class DeepSeekRepository(private val client: HttpClient) : AiRepository {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    override suspend fun askAi(messages: List<Message>, settings: ChatSettings): String {
+    override suspend fun askAi(messages: List<Message>, settings: ChatSettings): AiResult {
         return try {
             val response: HttpResponse = client.post(URL) {
                 contentType(ContentType.Application.Json)
@@ -26,16 +28,22 @@ class DeepSeekRepository(private val client: HttpClient) : AiRepository {
                 setBody(buildRequestBody(messages, settings))
             }
             if (response.status.isSuccess()) {
-                response.body<ChatResponse>().choices.firstOrNull()?.message?.content ?: "Пустой ответ"
+                val body = response.body<ChatResponse>()
+                val content = body.choices.firstOrNull()?.message?.content ?: "Пустой ответ"
+                AiResult(content, body.usage)
             } else {
                 throw Exception(response.bodyAsText())
             }
         } catch (e: Exception) {
-            "Ошибка при запросе: ${e.message}"
+            AiResult("Ошибка при запросе: ${e.message}", null)
         }
     }
 
-    override fun askAiStream(messages: List<Message>, settings: ChatSettings): Flow<String> = flow {
+    override fun askAiStream(
+        messages: List<Message>,
+        settings: ChatSettings,
+        onUsage: ((TokenUsage) -> Unit)?,
+    ): Flow<String> = flow {
         client.preparePost(URL) {
             contentType(ContentType.Application.Json)
             header(HttpHeaders.Authorization, "Bearer $API_KEY")
@@ -50,9 +58,10 @@ class DeepSeekRepository(private val client: HttpClient) : AiRepository {
                 if (!line.startsWith("data: ")) continue
                 val data = line.removePrefix("data: ").trim()
                 if (data == "[DONE]") break
-                val content = json.decodeFromString<StreamChunk>(data)
-                    .choices.firstOrNull()?.delta?.content
+                val chunk = json.decodeFromString<StreamChunk>(data)
+                val content = chunk.choices.firstOrNull()?.delta?.content
                 if (content != null) emit(content)
+                if (chunk.usage != null) onUsage?.invoke(chunk.usage)
             }
         }
     }
@@ -71,6 +80,7 @@ class DeepSeekRepository(private val client: HttpClient) : AiRepository {
         frequencyPenalty = settings.frequencyPenalty,
         presencePenalty = settings.presencePenalty,
         stream = stream,
+        streamOptions = if (stream == true) StreamOptions() else null,
     )
 
     companion object {

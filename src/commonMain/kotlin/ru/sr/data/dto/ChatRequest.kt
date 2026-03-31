@@ -15,4 +15,10 @@ data class ChatRequest(
     @SerialName("frequency_penalty") val frequencyPenalty: Double? = null,
     @SerialName("presence_penalty") val presencePenalty: Double? = null,
     val stream: Boolean? = null,
+    @SerialName("stream_options") val streamOptions: StreamOptions? = null,
+)
+
+@Serializable
+data class StreamOptions(
+    @SerialName("include_usage") val includeUsage: Boolean = true,
 )

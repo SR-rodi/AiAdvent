@@ -42,6 +42,7 @@ fun ChatScreen(viewModel: ChatViewModel = koinInject()) {
         topBar = {
             TopBar(
                 agentName = state.currentAgentName,
+                tokenStats = state.tokenStats,
                 onToggleSettings = viewModel::toggleSettingsPanel,
             )
         },
