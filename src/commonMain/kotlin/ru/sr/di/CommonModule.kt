@@ -10,7 +10,7 @@ import ru.sr.presentation.ui.ChatViewModel
 
 val commonModule = module {
     single<AiRepository> { DeepSeekRepository(get()) }
-    single { AgentManager(get(), get()) }
+    single { AgentManager(get(), get(), get()) }
     single { SendMessageUseCase(get()) }
     single { CommandHandler(get(), get()) }
     single { ChatViewModel(get(), get(), get(), get()) }

@@ -68,6 +68,16 @@ class CommandHandler(
         "presencePenalty" to CommandDef("штраф за уже упомянутые токены", "= <-2.0..2.0>") { v ->
             setNullableDouble("presencePenalty", v, -2.0, 2.0) { settings().presencePenalty = it }
         },
+        "contextSize" to CommandDef("размер контекстного окна (> 0)", "= <int>") { v ->
+            setNullableInt("contextSize", v, min = 1) { n ->
+                settings().contextWindowSize = n ?: 20
+            }
+        },
+        "summarizeEvery" to CommandDef("суммаризировать каждые N сообщений (> 0)", "= <int>") { v ->
+            setNullableInt("summarizeEvery", v, min = 1) { n ->
+                settings().summarizeEvery = n ?: 10
+            }
+        },
         "write" to CommandDef("записать следующий ответ в файл", "= <filename.md>") { v ->
             if (v.isNullOrBlank()) return@CommandDef "Укажите имя файла: /write = name.md"
             if (v.trim() == "null") {

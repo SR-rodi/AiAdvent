@@ -3,11 +3,13 @@ package ru.sr.domain.agent
 import ru.sr.data.AiRepository
 import ru.sr.data.ChatHistoryPort
 import ru.sr.data.ChatSettings
+import ru.sr.data.SummaryPort
 import ru.sr.data.dto.Message
 
 class AgentManager(
     private val repository: AiRepository,
     private val chatHistory: ChatHistoryPort,
+    private val summaryPort: SummaryPort,
 ) {
 
     private val agents = linkedMapOf<String, ChatAgent>()
@@ -47,7 +49,7 @@ class AgentManager(
     fun currentTokenStats(): TokenStats = current.tokenStats
 
     private fun createAndStore(name: String, settings: ChatSettings = ChatSettings()): ChatAgent {
-        val agent = ChatAgent(name = name, repository = repository, settings = settings, chatHistory = chatHistory)
+        val agent = ChatAgent(name = name, repository = repository, settings = settings, chatHistory = chatHistory, summaryPort = summaryPort)
         agents[name] = agent
         return agent
     }

@@ -120,6 +120,8 @@ class ChatViewModel(
             frequencyPenalty = s.frequencyPenalty?.toString() ?: "",
             presencePenalty = s.presencePenalty?.toString() ?: "",
             stop = s.stop?.joinToString(", ") ?: "",
+            contextWindowSize = s.contextWindowSize.toString(),
+            summarizeEvery = s.summarizeEvery.toString(),
         )
     }
 
@@ -153,6 +155,18 @@ class ChatViewModel(
             .takeIf { it.isNotEmpty() }
             ?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }
         _state.update { it.copy(settings = it.settings.copy(stop = v)) }
+    }
+
+    fun onContextWindowSizeChanged(v: String) {
+        v.trim().toIntOrNull()?.takeIf { it > 0 }
+            ?.let { agentManager.currentAgent.settings.contextWindowSize = it }
+        _state.update { it.copy(settings = it.settings.copy(contextWindowSize = v)) }
+    }
+
+    fun onSummarizeEveryChanged(v: String) {
+        v.trim().toIntOrNull()?.takeIf { it > 0 }
+            ?.let { agentManager.currentAgent.settings.summarizeEvery = it }
+        _state.update { it.copy(settings = it.settings.copy(summarizeEvery = v)) }
     }
 
     fun onSettingsReset() {

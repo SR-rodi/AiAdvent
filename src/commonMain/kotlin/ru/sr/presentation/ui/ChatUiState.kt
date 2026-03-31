@@ -9,6 +9,8 @@ data class AgentSettingsUiState(
     val frequencyPenalty: String = "",
     val presencePenalty: String = "",
     val stop: String = "",
+    val contextWindowSize: String = "20",
+    val summarizeEvery: String = "10",
 )
 
 data class ChatUiState(
