@@ -6,7 +6,7 @@
 - **Desktop UI** — Compose Desktop (основной режим, `MainDesktop.kt`)
 - **Консоль** — REPL в терминале (`MainConsole.kt`, `@Deprecated`)
 
-Функции: стриминг ответов, несколько агентов с раздельной историей, настройки на агента, запись ответов в файл, персистентность истории в SQLite, счётчик токенов в TopBar.
+Функции: стриминг ответов, несколько агентов с раздельной историей, настройки на агента, запись ответов в файл, персистентность истории в SQLite, счётчик токенов в TopBar, управление контекстом (скользящее окно + инкрементальное суммари).
 
 ## Стек
 - Kotlin 2.2.20, KMP (target: JVM 24)
@@ -28,6 +28,8 @@ src/commonMain/kotlin/ru/sr/
     AiResult.kt               — data class AiResult(content: String, usage: TokenUsage?)
     ChatSettings.kt           — настройки на агента (mutable класс)
     ChatHistoryPort.kt        — интерфейс персистентности истории (listAgentNames, load, append, clear)
+    AgentSummary.kt           — data class AgentSummary(content, summarizedCount)
+    SummaryPort.kt            — интерфейс персистентности суммари (load, save, clear)
     DeepSeekRepository.kt     — реализация DeepSeek API (SSE стриминг + stream_options для usage)
     OpenRouterRepository.kt   — реализация OpenRouter API
     FileResponseWriterPort.kt — интерфейс записи ответов в файл (expect/actual)
@@ -70,6 +72,7 @@ src/jvmMain/kotlin/ru/sr/
     EnvProvider.kt            — actual: System.getProperty()
     FileResponseWriter.kt     — actual: запись ответа в .md файл
     SqliteChatHistory.kt      — реализация ChatHistoryPort; БД в ~/.aiAdvent/history.db
+    SqliteSummary.kt          — реализация SummaryPort; таблица summaries в том же history.db
   di/
     JvmModule.kt              — Koin: HttpClient, FileResponseWriter, SqliteChatHistory, ConsoleChat
   presentation/
@@ -83,7 +86,10 @@ src/jvmMain/kotlin/ru/sr/
 - Имеет свои `ChatSettings` (не глобальные — у каждого агента свои)
 - Стрим: история обновляется через `onCompletion` после завершения Flow
 - Хранит `tokenStats: TokenStats` — обновляется после каждого ответа API
-- `clearHistory()` очищает историю и в памяти, и в SQLite, и сбрасывает tokenStats
+- `clearHistory()` очищает историю и в памяти, и в SQLite, и сбрасывает tokenStats и суммари
+- `buildContext()` — строит контекст для API: суммари (system) + последние `contextWindowSize` сообщений
+- `maybeSummarize()` — вызывается после каждого ответа; если за пределами окна накопилось ≥ `summarizeEvery` новых сообщений, генерирует обновлённое суммари через `repository.askAi`
+- Суммари хранится в `SummaryPort`; восстанавливается при перезапуске
 
 ### AgentManager
 - Хранит `LinkedHashMap<String, ChatAgent>`, при старте восстанавливает всех агентов из БД
@@ -110,6 +116,12 @@ src/jvmMain/kotlin/ru/sr/
 - `listAgentNames()` — порядок агентов по MIN(id) (порядок создания)
 - Все методы `@Synchronized` — единственный `Connection` на весь процесс
 
+### SummaryPort / SqliteSummary
+- Таблица `summaries(agent_name PK, content, summarized_count)` в том же `~/.aiAdvent/history.db`
+- `summarized_count` — сколько сообщений с начала истории уже вошло в суммари
+- `saveSummary` использует `INSERT OR REPLACE`
+- Все методы `@Synchronized`
+
 ### CommandHandler
 - Команды `/что-то`, парсинг: `/command = value` или `/command`
 - Настройки читаются через `agentManager.currentAgent.settings`
@@ -129,6 +141,7 @@ AiRepository (DeepSeekRepository)
 ```
 HttpClient (CIO, 3 мин таймаут, explicitNulls=false)
 SqliteChatHistory (ChatHistoryPort)
+SqliteSummary (SummaryPort)
 FileResponseWriter (FileResponseWriterPort)
 ConsoleChat (@Deprecated)
 ```
@@ -150,6 +163,8 @@ ConsoleChat (@Deprecated)
 | `/stop = s1, s2` | стоп-последовательности (до 16) |
 | `/frequencyPenalty = N` | штраф за повтор (-2.0..2.0) |
 | `/presencePenalty = N` | штраф за упомянутые (-2.0..2.0) |
+| `/contextSize = N` | размер контекстного окна (> 0, по умолчанию 20) |
+| `/summarizeEvery = N` | суммаризировать каждые N сообщений (> 0, по умолчанию 10) |
 | `/write = file.md` | записать следующий ответ в файл |
 | `/help` | справка |
 
@@ -158,7 +173,7 @@ ConsoleChat (@Deprecated)
 - HTTP таймаут: 3 минуты (`60_000 * 3`)
 - `ConsoleChat` помечен `@Deprecated` — не трогать без необходимости
 - `MessageBubble` оборачивает текст в `SelectionContainer` — ответ AI можно выделить мышью
-- `AgentSettingsUiState` хранит все поля как `String` — чтобы `TextField` не терял фокус при вводе
+- `AgentSettingsUiState` хранит все поля как `String` — чтобы `TextField` не терял фокус при вводе; включает `contextWindowSize` и `summarizeEvery`
 - `stream_options: {include_usage: true}` передаётся только при стриминге — DeepSeek шлёт usage в последнем чанке (`choices: []`)
 - Счётчик токенов в TopBar скрыт, пока `sessionTotalTokens == 0`
 - Запуск: `JAVA_HOME=~/.gradle/jdks/eclipse_adoptium-21-amd64-windows.2 ./gradlew run`
