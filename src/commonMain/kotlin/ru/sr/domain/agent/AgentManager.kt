@@ -1,15 +1,26 @@
 package ru.sr.domain.agent
 
 import ru.sr.data.AiRepository
+import ru.sr.data.ChatHistoryPort
 import ru.sr.data.ChatSettings
+import ru.sr.data.dto.Message
 
-class AgentManager(private val repository: AiRepository) {
+class AgentManager(
+    private val repository: AiRepository,
+    private val chatHistory: ChatHistoryPort,
+) {
 
     private val agents = linkedMapOf<String, ChatAgent>()
     private var current: ChatAgent
 
     init {
-        current = createAndStore("Agent-1")
+        val savedNames = chatHistory.listAgentNames()
+        if (savedNames.isEmpty()) {
+            current = createAndStore("Agent-1")
+        } else {
+            savedNames.forEach { createAndStore(it) }
+            current = agents[savedNames.first()]!!
+        }
     }
 
     val currentAgent: ChatAgent get() = current
@@ -30,8 +41,10 @@ class AgentManager(private val repository: AiRepository) {
 
     fun listNames(): List<String> = agents.keys.toList()
 
+    fun historyOf(name: String): List<Message> = agents[name]?.historySnapshot() ?: emptyList()
+
     private fun createAndStore(name: String, settings: ChatSettings = ChatSettings()): ChatAgent {
-        val agent = ChatAgent(name = name, repository = repository, settings = settings)
+        val agent = ChatAgent(name = name, repository = repository, settings = settings, chatHistory = chatHistory)
         agents[name] = agent
         return agent
     }

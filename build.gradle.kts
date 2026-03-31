@@ -43,6 +43,7 @@ kotlin {
                 implementation("io.ktor:ktor-client-cio:$ktorVersion")
                 implementation("io.ktor:ktor-client-logging:$ktorVersion")
                 implementation("ch.qos.logback:logback-classic:1.4.11")
+                implementation("org.xerial:sqlite-jdbc:3.45.3.0")
             }
         }
         val jvmTest by getting {

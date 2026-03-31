@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ru.sr.data.ChatSettings
 import ru.sr.data.FileResponseWriterPort
+import ru.sr.data.dto.Message
 import ru.sr.domain.agent.AgentManager
 import ru.sr.domain.usecase.SendMessageUseCase
 import ru.sr.presentation.CommandHandler
@@ -26,13 +27,16 @@ class ChatViewModel(
 
     // Отдельная история сообщений для каждого агента
     private val agentMessages = LinkedHashMap<String, List<ChatMessage>>().apply {
-        put(agentManager.currentName(), emptyList())
+        agentManager.listNames().forEach { name ->
+            put(name, agentManager.historyOf(name).map { it.toChatMessage() })
+        }
     }
 
     private val _state = MutableStateFlow(
         ChatUiState(
             currentAgentName = agentManager.currentName(),
             agentNames = agentManager.listNames(),
+            messages = getMessages(agentManager.currentName()),
             settings = snapshotSettings(),
         )
     )
@@ -223,6 +227,12 @@ class ChatViewModel(
                 }
             }
         }
+    }
+
+    private fun Message.toChatMessage(): ChatMessage = when (role) {
+        "user"      -> ChatMessage.User(id = nextId++, text = content)
+        "assistant" -> ChatMessage.Ai(id = nextId++, text = content)
+        else        -> ChatMessage.System(id = nextId++, text = content)
     }
 
     fun clear() {
