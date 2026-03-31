@@ -11,10 +11,13 @@ import ru.sr.data.ChatHistoryPort
 import ru.sr.data.FileResponseWriter
 import ru.sr.data.FileResponseWriterPort
 import ru.sr.data.SqliteChatHistory
+import ru.sr.data.SqliteSummary
+import ru.sr.data.SummaryPort
 import ru.sr.presentation.ConsoleChat
 
 val jvmModule = module {
     single<ChatHistoryPort> { SqliteChatHistory() }
+    single<SummaryPort> { SqliteSummary() }
     single {
         HttpClient(CIO) {
             install(HttpTimeout) {

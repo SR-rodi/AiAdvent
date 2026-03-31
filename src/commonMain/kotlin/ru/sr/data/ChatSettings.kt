@@ -7,6 +7,8 @@ class ChatSettings {
     var stop: List<String>? = null
     var frequencyPenalty: Double? = null
     var presencePenalty: Double? = null
+    var contextWindowSize: Int = 20
+    var summarizeEvery: Int = 10
 
     fun reset() {
         maxTokens = null
@@ -15,14 +17,18 @@ class ChatSettings {
         stop = null
         frequencyPenalty = null
         presencePenalty = null
+        contextWindowSize = 20
+        summarizeEvery = 10
     }
 
     fun format(): String = buildString {
-        appendLine("maxTokens        = $maxTokens")
-        appendLine("temperature      = $temperature")
-        appendLine("topP             = $topP")
-        appendLine("stop             = $stop")
-        appendLine("frequencyPenalty = $frequencyPenalty")
-        append(    "presencePenalty  = $presencePenalty")
+        appendLine("maxTokens         = $maxTokens")
+        appendLine("temperature       = $temperature")
+        appendLine("topP              = $topP")
+        appendLine("stop              = $stop")
+        appendLine("frequencyPenalty  = $frequencyPenalty")
+        appendLine("presencePenalty   = $presencePenalty")
+        appendLine("contextWindowSize = $contextWindowSize")
+        append(    "summarizeEvery    = $summarizeEvery")
     }
 }

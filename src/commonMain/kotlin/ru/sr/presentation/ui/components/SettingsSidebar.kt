@@ -26,6 +26,8 @@ fun SettingsSidebar(
     onFrequencyPenaltyChanged: (String) -> Unit,
     onPresencePenaltyChanged: (String) -> Unit,
     onStopChanged: (String) -> Unit,
+    onContextWindowSizeChanged: (String) -> Unit,
+    onSummarizeEveryChanged: (String) -> Unit,
     onReset: () -> Unit,
 ) {
     Column(
@@ -84,6 +86,22 @@ fun SettingsSidebar(
                 label = "Stop",
                 placeholder = "через запятую",
                 isError = false,
+            )
+            SettingField(
+                value = settings.contextWindowSize,
+                onValueChange = onContextWindowSizeChanged,
+                label = "Context Window",
+                placeholder = "> 0",
+                isError = settings.contextWindowSize.isNotEmpty() &&
+                        (settings.contextWindowSize.trim().toIntOrNull() ?: 0) <= 0,
+            )
+            SettingField(
+                value = settings.summarizeEvery,
+                onValueChange = onSummarizeEveryChanged,
+                label = "Summarize Every",
+                placeholder = "> 0",
+                isError = settings.summarizeEvery.isNotEmpty() &&
+                        (settings.summarizeEvery.trim().toIntOrNull() ?: 0) <= 0,
             )
         }
 

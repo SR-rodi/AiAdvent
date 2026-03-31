@@ -84,6 +84,8 @@ fun ChatScreen(viewModel: ChatViewModel = koinInject()) {
                     onFrequencyPenaltyChanged = viewModel::onFrequencyPenaltyChanged,
                     onPresencePenaltyChanged = viewModel::onPresencePenaltyChanged,
                     onStopChanged = viewModel::onStopChanged,
+                    onContextWindowSizeChanged = viewModel::onContextWindowSizeChanged,
+                    onSummarizeEveryChanged = viewModel::onSummarizeEveryChanged,
                     onReset = viewModel::onSettingsReset,
                 )
             }
