@@ -7,11 +7,14 @@ import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
 import org.koin.dsl.module
+import ru.sr.data.ChatHistoryPort
 import ru.sr.data.FileResponseWriter
 import ru.sr.data.FileResponseWriterPort
+import ru.sr.data.SqliteChatHistory
 import ru.sr.presentation.ConsoleChat
 
 val jvmModule = module {
+    single<ChatHistoryPort> { SqliteChatHistory() }
     single {
         HttpClient(CIO) {
             install(HttpTimeout) {
